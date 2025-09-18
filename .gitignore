@@ -30,3 +30,10 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# C validation files
+c_validation/test_vectors_gen
+c_validation/uuidv47.h
+
+# Benchmark results
+bench.txt
