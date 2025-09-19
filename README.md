@@ -1,5 +1,10 @@
 # uuid47
 
+[![CI](https://github.com/n2p5/uuid47/actions/workflows/ci.yml/badge.svg)](https://github.com/n2p5/uuid47/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/n2p5/uuid47.svg)](https://pkg.go.dev/github.com/n2p5/uuid47)
+[![Go Report Card](https://goreportcard.com/badge/github.com/n2p5/uuid47)](https://goreportcard.com/report/github.com/n2p5/uuid47)
+[![License: CC0](https://img.shields.io/badge/License-CC0-lightgrey.svg)](https://creativecommons.org/publicdomain/zero/1.0/)
+
 A Go port of the [UUIDv4/v7 hybrid library](https://github.com/stateless-me/uuidv47) that allows storing time-ordered UUIDv7 in databases while emitting a UUIDv4-looking facade at API boundaries.
 
 ## Overview
