@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+
 - GitHub Actions CI/CD pipeline
 - Daily security scanning with gosec
 
