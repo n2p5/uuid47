@@ -33,6 +33,11 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+
       - name: Test
         run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 

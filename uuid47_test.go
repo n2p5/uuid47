@@ -171,11 +171,11 @@ func TestEncodeDecodeRoundtrip(t *testing.T) {
 	// Test from test_encode_decode_roundtrip in tests.c
 	key := Key{K0: 0x0123456789abcdef, K1: 0xfedcba9876543210}
 
-	for i := 0; i < 16; i++ {
+	for i := range uint64(16) {
 		// Match the C test exactly
-		ts := uint64((0x100000*uint64(i) + 123))
-		ra := uint16((0x0AAA ^ uint32(i*7)) & 0x0FFF)
-		rb := (uint64(0x0123456789ABCDEF) ^ (0x1111111111111111 * uint64(i))) & ((1 << 62) - 1)
+		ts := 0x100000*i + 123
+		ra := uint16((0x0AAA ^ uint32(i)*7) & 0x0FFF) //nolint:gosec // G115: Safe conversion in test with i < 16
+		rb := (uint64(0x0123456789ABCDEF) ^ (0x1111111111111111 * i)) & ((1 << 62) - 1)
 
 		u7 := craftV7(ts, ra, rb)
 
