@@ -78,10 +78,5 @@ jobs:
       - name: Get dependencies
         run: go mod download
 
-      - name: Install build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc
-
       - name: Verify C compatibility
         run: make verify-c-compat
