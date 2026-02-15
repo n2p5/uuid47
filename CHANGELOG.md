@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-02-14
+
 ### Added
 
 - GitHub Actions CI/CD pipeline
@@ -29,5 +31,6 @@ All notable changes to this project will be documented in this file.
 - Benchmarks (~9ns per operation)
 - Example program
 
-[Unreleased]: https://github.com/n2p5/uuid47/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/n2p5/uuid47/compare/v0.0.2...HEAD
+[0.0.2]: https://github.com/n2p5/uuid47/releases/tag/v0.0.2
 [0.0.1]: https://github.com/n2p5/uuid47/releases/tag/v0.0.1
