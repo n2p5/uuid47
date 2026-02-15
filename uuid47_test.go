@@ -35,7 +35,7 @@ func craftV7(tsMs48 uint64, randA12 uint16, randB62 uint64) UUID {
 	// First 6 bits go in byte 8 (lower 6 bits)
 	u[8] = (u[8] & 0xC0) | byte((randB62>>56)&0x3F)
 	// Remaining 56 bits go in bytes 9-15
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		u[9+i] = byte(randB62 >> (48 - i*8))
 	}
 
@@ -144,12 +144,51 @@ func TestUUIDParseFormatRoundtrip(t *testing.T) {
 	if u != u2 {
 		t.Errorf("Parse/format roundtrip mismatch: %v != %v", u, u2)
 	}
+}
 
-	// Test invalid UUID
-	bad := "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
-	_, err = Parse(bad)
-	if err == nil {
-		t.Error("Parse should have failed for invalid UUID")
+func TestParseEdgeCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid lowercase", "018f2d9f-9a2a-7def-8c3f-7b1a2c4d5e6f", false},
+		{"valid all zeros v7", "00000000-0000-7000-8000-000000000000", false},
+		{"empty string", "", true},
+		{"too short", "018f2d9f-9a2a-7def-8c3f", true},
+		{"too long", "018f2d9f-9a2a-7def-8c3f-7b1a2c4d5e6f0", true},
+		{"no hyphens", "018f2d9f9a2a7def8c3f7b1a2c4d5e6f", true},
+		{"missing first hyphen", "018f2d9f9a2a-7def-8c3f-7b1a2c4d5e6f", true},
+		{"missing second hyphen", "018f2d9f-9a2a7def-8c3f-7b1a2c4d5e6f", true},
+		{"missing third hyphen", "018f2d9f-9a2a-7def8c3f-7b1a2c4d5e6f", true},
+		{"missing fourth hyphen", "018f2d9f-9a2a-7def-8c3f7b1a2c4d5e6f", true},
+		{"hyphens in wrong positions", "018f2d-9f9a2a-7def-8c3f-7b1a2c4d5e6f", true},
+		{"invalid hex characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", true},
+		{"uppercase hex", "018F2D9F-9A2A-7DEF-8C3F-7B1A2C4D5E6F", false},
+		{"mixed case hex", "018f2D9F-9a2A-7dEf-8C3f-7b1A2c4D5e6F", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			u, err := Parse(tc.input)
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("Parse(%q) should have failed", tc.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Parse(%q) failed: %v", tc.input, err)
+			}
+			// Valid parses should roundtrip through String
+			roundtripped, err := Parse(u.String())
+			if err != nil {
+				t.Fatalf("Roundtrip parse failed: %v", err)
+			}
+			if roundtripped != u {
+				t.Errorf("Roundtrip mismatch: %v != %v", roundtripped, u)
+			}
+		})
 	}
 }
 
@@ -310,7 +349,7 @@ func TestCraftV7(t *testing.T) {
 	// Check rand_b (62 bits, stored across bytes 8-15)
 	// First 6 bits from byte 8, then 56 bits from bytes 9-15
 	gotRandB := uint64(u[8]&0x3F) << 56
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		gotRandB |= uint64(u[9+i]) << (48 - i*8)
 	}
 
@@ -328,19 +367,11 @@ func TestBuildSipInput(t *testing.T) {
 	}
 	sipInput := buildSipInputFromV7(u)
 
-	// The SIP input should be:
-	// [low-nibble of b6][b7][b8&0x3F][b9..b15]
+	// Expected: [low-nibble of b6][b7][b8&0x3F][b9..b15]
+	// From UUID ...7def-8c3f-7b1a2c4d5e6f:
+	//   b6=0x7d -> 0x0d, b7=0xef, b8=0x8c -> 0x0c, b9..b15 as-is
 	expected := [10]byte{
-		u[6] & 0x0F, // 0xF (from 0xef)
-		u[7],        // 0xef
-		u[8] & 0x3F, // 0x0c (from 0x8c)
-		u[9],        // 0x3f
-		u[10],       // 0x7b
-		u[11],       // 0x1a
-		u[12],       // 0x2c
-		u[13],       // 0x4d
-		u[14],       // 0x5e
-		u[15],       // 0x6f
+		0x0d, 0xef, 0x0c, 0x3f, 0x7b, 0x1a, 0x2c, 0x4d, 0x5e, 0x6f,
 	}
 
 	if sipInput != expected {
@@ -354,8 +385,7 @@ func BenchmarkEncode(b *testing.B) {
 	u7, _ := Parse("018f2d9f-9a2a-7def-8c3f-7b1a2c4d5e6f")
 	key := Key{K0: 0x0123456789abcdef, K1: 0xfedcba9876543210}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Encode(u7, key)
 	}
 }
@@ -365,8 +395,7 @@ func BenchmarkDecode(b *testing.B) {
 	key := Key{K0: 0x0123456789abcdef, K1: 0xfedcba9876543210}
 	facade := Encode(u7, key)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Decode(facade, key)
 	}
 }
@@ -375,8 +404,7 @@ func BenchmarkRoundtrip(b *testing.B) {
 	u7, _ := Parse("018f2d9f-9a2a-7def-8c3f-7b1a2c4d5e6f")
 	key := Key{K0: 0x0123456789abcdef, K1: 0xfedcba9876543210}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		facade := Encode(u7, key)
 		_ = Decode(facade, key)
 	}
@@ -385,8 +413,7 @@ func BenchmarkRoundtrip(b *testing.B) {
 func BenchmarkParse(b *testing.B) {
 	s := "018f2d9f-9a2a-7def-8c3f-7b1a2c4d5e6f"
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = Parse(s)
 	}
 }
@@ -394,8 +421,7 @@ func BenchmarkParse(b *testing.B) {
 func BenchmarkString(b *testing.B) {
 	u, _ := Parse("018f2d9f-9a2a-7def-8c3f-7b1a2c4d5e6f")
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = u.String()
 	}
 }

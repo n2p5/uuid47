@@ -7,7 +7,6 @@ package uuid47
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 
 	"github.com/dchest/siphash"
@@ -31,27 +30,29 @@ func Parse(s string) (UUID, error) {
 		return u, ErrInvalidUUID
 	}
 
-	// Check hyphens are in the right places
 	if s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
 		return u, ErrInvalidUUID
 	}
 
-	// Remove hyphens for hex decoding
-	// Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-	//         [0:8]    [9:13] [14:18] [19:23] [24:36]
-	b := make([]byte, 32)
-	copy(b[0:8], s[0:8])     // First 8 chars
-	copy(b[8:12], s[9:13])   // Next 4 chars (after first hyphen)
-	copy(b[12:16], s[14:18]) // Next 4 chars (after second hyphen)
-	copy(b[16:20], s[19:23]) // Next 4 chars (after third hyphen)
-	copy(b[20:32], s[24:36]) // Last 12 chars (after fourth hyphen)
-
-	// Decode hex
-	decoded, err := hex.DecodeString(string(b))
-	if err != nil {
-		return u, ErrInvalidUUID
+	// Decode hex nibbles directly, skipping validated hyphen positions.
+	j := 0
+	for i := 0; i < 36; {
+		if s[i] == '-' {
+			i++
+			continue
+		}
+		hi, ok := hexNibble(s[i])
+		if !ok {
+			return u, ErrInvalidUUID
+		}
+		lo, ok := hexNibble(s[i+1])
+		if !ok {
+			return u, ErrInvalidUUID
+		}
+		u[j] = (hi << 4) | lo
+		j++
+		i += 2
 	}
-	copy(u[:], decoded)
 	return u, nil
 }
 
@@ -62,7 +63,7 @@ func (u UUID) String() string {
 
 	// Format as 8-4-4-4-12
 	j := 0
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		if i == 4 || i == 6 || i == 8 || i == 10 {
 			buf[j] = '-'
 			j++
@@ -125,6 +126,20 @@ func Decode(uuid UUID, key Key) UUID {
 
 // Internal helper functions
 
+// hexNibble converts an ASCII hex character to its 4-bit value.
+func hexNibble(c byte) (byte, bool) {
+	switch {
+	case c >= '0' && c <= '9':
+		return c - '0', true
+	case c >= 'a' && c <= 'f':
+		return c - 'a' + 10, true
+	case c >= 'A' && c <= 'F':
+		return c - 'A' + 10, true
+	default:
+		return 0, false
+	}
+}
+
 // rd48be reads a 48-bit big-endian value from 6 bytes.
 func rd48be(src []byte) uint64 {
 	return (uint64(src[0]) << 40) |
@@ -158,8 +173,8 @@ func buildSipInputFromV7(u UUID) [10]byte {
 }
 
 // setVersion sets the version number of the UUID.
-func setVersion(u *UUID, ver int) {
-	u[6] = (u[6] & 0x0F) | (byte(ver&0x0F) << 4)
+func setVersion(u *UUID, ver byte) {
+	u[6] = (u[6] & 0x0F) | ((ver & 0x0F) << 4)
 }
 
 // setVariantRFC4122 sets the variant bits to RFC 4122 (10xxxxxx).
